@@ -1,0 +1,82 @@
+{
+  "_args": [
+    [
+      "react-native-vlc-player@0.0.9",
+      "/home/chenwenyu/YunPingRN"
+    ]
+  ],
+  "_from": "react-native-vlc-player@0.0.9",
+  "_id": "react-native-vlc-player@0.0.9",
+  "_inCache": true,
+  "_installable": true,
+  "_location": "/react-native-vlc-player",
+  "_nodeVersion": "4.5.0",
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/react-native-vlc-player-0.0.9.tgz_1476419768709_0.46431150170974433"
+  },
+  "_npmUser": {
+    "email": "abgv9221@gmail.com",
+    "name": "ghondar"
+  },
+  "_npmVersion": "2.15.9",
+  "_phantomChildren": {},
+  "_requested": {
+    "name": "react-native-vlc-player",
+    "raw": "react-native-vlc-player@0.0.9",
+    "rawSpec": "0.0.9",
+    "scope": null,
+    "spec": "0.0.9",
+    "type": "version"
+  },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "http://registry.npmjs.org/react-native-vlc-player/-/react-native-vlc-player-0.0.9.tgz",
+  "_shasum": "7d0de8989d053bb5d0fb2051d88ff0d9eed758da",
+  "_shrinkwrap": null,
+  "_spec": "react-native-vlc-player@0.0.9",
+  "_where": "/home/chenwenyu/YunPingRN",
+  "author": {
+    "name": "abgv9221@gmail.com"
+  },
+  "bugs": {
+    "url": "https://github.com/ghondar/react-native-vlc-player/issues"
+  },
+  "dependencies": {},
+  "description": "VLC Player for react-native",
+  "devDependencies": {},
+  "directories": {},
+  "dist": {
+    "shasum": "7d0de8989d053bb5d0fb2051d88ff0d9eed758da",
+    "tarball": "https://registry.npmjs.org/react-native-vlc-player/-/react-native-vlc-player-0.0.9.tgz"
+  },
+  "gitHead": "50cb0f22a49185b381e35826bbe9e43c8a713d02",
+  "homepage": "https://github.com/ghondar/react-native-vlc-player#readme",
+  "keywords": [
+    "react-native",
+    "android",
+    "vlc",
+    "player",
+    "video"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "maintainers": [
+    {
+      "email": "abgv9221@gmail.com",
+      "name": "ghondar"
+    }
+  ],
+  "name": "react-native-vlc-player",
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/ghondar/react-native-vlc-player.git"
+  },
+  "scripts": {
+    "test": "npm test"
+  },
+  "version": "0.0.9"
+}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#FF5C6BC0</color>
+    <color name="beamplayer_seekbar_track">#2A2E30</color>
+    <color name="bg">#1F2224</color>
+    <color name="bg_dark">#141617</color>
+    <color name="detail_header_title_bg">#383D42</color>
+    <color name="div_white">#22FFFFFF</color>
+    <color name="nav_drawer_color">#16171A</color>
+    <color name="nav_drawer_deselected">#CFFF</color>
+    <color name="nav_drawer_focused_bg">#414144</color>
+    <color name="nav_drawer_pressed_bg">#313134</color>
+    <color name="nav_drawer_selected_bg">#1D1D21</color>
+    <color name="overlay">#33000000</color>
+    <color name="player_overlay">#55000000</color>
+    <color name="primary">#FF3F51B5</color>
+    <color name="primary_dark">#FF303F9F</color>
+    <color name="secondary_text_color">#AAFFFFFF</color>
+    <color name="selectable_focused">#22FFFFFF</color>
+    <color name="selectable_pressed">#55FFFFFF</color>
+    <color name="text_color">#FFFFFF</color>
+    <color name="trans_white">#99FFFFFF</color>
+    <declare-styleable name="ButtonBarContainerTheme"><attr format="reference" name="metaButtonBarStyle"/><attr format="reference" name="metaButtonBarButtonStyle"/></declare-styleable>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+    </style>
+    <style name="ButtonBar">
+        <item name="android:paddingLeft">2dp</item>
+        <item name="android:paddingTop">5dp</item>
+        <item name="android:paddingRight">2dp</item>
+        <item name="android:paddingBottom">0dp</item>
+        <item name="android:background">@android:drawable/bottom_bar</item>
+    </style>
+    <style name="ButtonBarButton"/>
+    <style name="FullscreenTheme" parent="android:Theme.NoTitleBar">
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@null</item>
+        <item name="metaButtonBarStyle">@style/ButtonBar</item>
+        <item name="metaButtonBarButtonStyle">@style/ButtonBarButton</item>
+    </style>
+</resources>

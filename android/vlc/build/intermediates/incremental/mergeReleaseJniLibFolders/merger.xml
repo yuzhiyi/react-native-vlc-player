@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merger version="3"><dataSet config="main"><source path="/home/chenwenyu/YunPingRN/node_modules/react-native-vlc-player/android/vlc/src/main/jniLibs"/></dataSet><dataSet config="release"><source path="/home/chenwenyu/YunPingRN/node_modules/react-native-vlc-player/android/vlc/src/release/jniLibs"/></dataSet></merger>
