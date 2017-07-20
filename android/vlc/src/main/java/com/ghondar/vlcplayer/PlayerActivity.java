@@ -2,10 +2,14 @@ package com.ghondar.vlcplayer;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,9 +24,9 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
-
-import com.vlcplayer.R;
+import android.widget.RelativeLayout;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 import org.videolan.libvlc.IVLCVout;
 import org.videolan.libvlc.LibVLC;
@@ -30,14 +34,16 @@ import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.util.VLCUtil;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import com.vlcplayer.R;
 
 public class PlayerActivity extends Activity implements IVLCVout.Callback {
 
     public final static String LOCATION = "srcVideo";
+    public final static String CONSOLE = "console";
 
     private String mFilePath;
+    private AudioManager audioManager;
 
     // display surface
     private LinearLayout layout;
@@ -49,6 +55,14 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     private Handler handlerOverlay;
     private Runnable runnableOverlay;
     private ImageView ivBack;
+    private ImageView ivVoiceStatue;
+    private TextView tvPlayedTime;
+    private TextView tvTotalTime;
+    private SeekBar sbTime;
+    private RelativeLayout rlConsole;
+
+    private long totalTime;
+    private int progress;
 
     // media player
     private LibVLC libvlc;
@@ -59,6 +73,9 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     private int mVideoVisibleWidth;
     private int mSarNum;
     private int mSarDen;
+    private MediaPlayer.EventListener eventListener;
+
+    private int voice;
 
     private int counter = 0;
 
@@ -75,74 +92,137 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     /*************
      * Activity
      *************/
+    private int voiceImage = R.drawable.voice;
+    private int muteImage = R.drawable.mute;
+    private final long timeToDisappear = 3000;
+    private boolean isConsole;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.player);
+	Intent intent = getIntent();
+        mFilePath = intent.getExtras().getString(LOCATION);
+        isConsole = intent.getExtras().getBoolean(CONSOLE,false);
+        initView();
+        initListener();
+        playMovie();
+    }
 
+    private void initView() {
         layout = (LinearLayout) findViewById(R.id.vlc_container);
         mSurface = (SurfaceView) findViewById(R.id.vlc_surface);
-
         vlcOverlay = (FrameLayout) findViewById(R.id.vlc_overlay);
         vlcButtonPlayPause = (ImageView) findViewById(R.id.vlc_button_play_pause);
         vlcButtonScale = (ImageButton) findViewById(R.id.vlc_button_scale);
-	ivBack = (ImageView) findViewById(R.id.iv_back);
-	ivBack.setOnClickListener(new View.OnClickListener() {
+        ivBack = (ImageView) findViewById(R.id.iv_back);
+        ivVoiceStatue = (ImageView) findViewById(R.id.iv_voice_statue);
+        tvPlayedTime = (TextView) findViewById(R.id.tv_played_time);
+        tvTotalTime = (TextView) findViewById(R.id.tv_total_time);
+        sbTime = (SeekBar) findViewById(R.id.sb_time);
+        rlConsole = (RelativeLayout) findViewById(R.id.rl_console);
+        audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+        voice = audioManager.getStreamVolume(AudioManager.STREAM_SYSTEM);
+        if (voice == 0) {
+            ivVoiceStatue.setImageDrawable(getResources().getDrawable(muteImage));
+        } else {
+            ivVoiceStatue.setImageDrawable(getResources().getDrawable(voiceImage));
+        }
+	if(isConsole == false) {
+            rlConsole.setVisibility(View.GONE);
+        }
+    }
+
+    private void initListener() {
+        ivBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 finish();
             }
         });
-        // Receive path to play from intent
-        Intent intent = getIntent();
-        mFilePath = intent.getExtras().getString(LOCATION);
-        playMovie();
-    }
-
-    public void playMovie() {
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying())
-            return ;
-        layout.setVisibility(View.VISIBLE);
-        holder = mSurface.getHolder();
-        createPlayer(mFilePath);
-    }
-
-    private void toggleFullscreen(boolean fullscreen)
-    {
-        WindowManager.LayoutParams attrs = getWindow().getAttributes();
-        if (fullscreen)
-        {
-            attrs.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
-            layout.setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN);
-        }
-        else
-        {
-            attrs.flags &= ~WindowManager.LayoutParams.FLAG_FULLSCREEN;
-        }
-        getWindow().setAttributes(attrs);
-    }
-
-    private void setupControls() {
-        // PLAY PAUSE
-        vlcButtonPlayPause.setOnClickListener(new View.OnClickListener() {
+        ivVoiceStatue.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (mMediaPlayer.isPlaying()) {
-                    mMediaPlayer.pause();
-                    vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
+                if (voice == 0) {
+                    ivVoiceStatue.setImageDrawable(getResources().getDrawable(voiceImage));
                 } else {
-                    mMediaPlayer.play();
-                    vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause_over_video));
+                    ivVoiceStatue.setImageDrawable(getResources().getDrawable(muteImage));
                 }
             }
         });
+        registerReceiver();
+        sbTime.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean b) {
+                if ((mMediaPlayer != null && !mMediaPlayer.isSeekable()) || totalTime == 0) {
+                    return;
+                }
+                if (progress > totalTime) {
+                    progress = (int) totalTime;
+                }
+                tvPlayedTime.setText(SystemUtil.getMediaTime(progress));
+            }
 
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                progress = seekBar.getProgress();
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                if ((mMediaPlayer != null && !mMediaPlayer.isSeekable()) || totalTime == 0) {
+                    sbTime.setProgress(progress);
+                    tvPlayedTime.setText(SystemUtil.getMediaTime(progress));
+                    return;
+                }
+                int progress = seekBar.getProgress();
+                if (progress > totalTime) {
+                    progress = (int) totalTime;
+                }
+                mMediaPlayer.setTime((long) progress);
+            }
+        });
+        eventListener = new MediaPlayer.EventListener() {
+            @Override
+            public void onEvent(MediaPlayer.Event event) {
+                try {
+                    if (event.getTimeChanged() == 0 || totalTime == 0) {
+                        return;
+                    }
+                    sbTime.setProgress((int) event.getTimeChanged());
+                    tvPlayedTime.setText(SystemUtil.getMediaTime((int) event.getTimeChanged()));
+                    if (mMediaPlayer.getPlayerState() == Media.State.Ended) {
+                        sbTime.setProgress(0);
+                        mMediaPlayer.setTime(0);
+                        tvTotalTime.setText(SystemUtil.getMediaTime((int) totalTime));
+                        mMediaPlayer.stop();
+                        vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause_over_video));
+			vlcOverlay.setVisibility(View.VISIBLE);
+                    }
+                    if (mMediaPlayer.getPlayerState() == Media.State.Playing) {
+                        vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
+
+                    }
+                } catch (Exception e) {
+
+                }
+            }
+        };
+        vlcButtonPlayPause.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(mMediaPlayer == null) {
+                    return;
+                }
+                if (mMediaPlayer.isPlaying()) {
+                    mMediaPlayer.pause();
+                    vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause_over_video));
+                } else {
+                    mMediaPlayer.play();
+                    vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
+                }
+            }
+        });
         vlcButtonScale.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -154,7 +234,6 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
                 changeSurfaceSize(true);
             }
         });
-
         // OVERLAY
         handlerOverlay = new Handler();
         runnableOverlay = new Runnable() {
@@ -164,17 +243,64 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
                 toggleFullscreen(true);
             }
         };
-        final long timeToDisappear = 3000;
+
         handlerOverlay.postDelayed(runnableOverlay, timeToDisappear);
         layout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 vlcOverlay.setVisibility(View.VISIBLE);
-
                 handlerOverlay.removeCallbacks(runnableOverlay);
                 handlerOverlay.postDelayed(runnableOverlay, timeToDisappear);
             }
         });
+    }
+
+    private void registerReceiver() {
+        MyVolumeReceiver mVolumeReceiver = new MyVolumeReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("android.media.VOLUME_CHANGED_ACTION");
+        registerReceiver(mVolumeReceiver, filter);
+    }
+
+    private class MyVolumeReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals("android.media.VOLUME_CHANGED_ACTION")) {
+                int currVolume = audioManager.getStreamVolume(AudioManager.STREAM_SYSTEM);
+                if (currVolume == voice) {
+                    return;
+                }
+                voice = currVolume;
+                if (currVolume == 0) {
+                    ivVoiceStatue.setImageDrawable(getResources().getDrawable(R.drawable.mute));
+                } else {
+                    ivVoiceStatue.setImageDrawable(getResources().getDrawable(R.drawable.voice));
+                }
+            }
+        }
+    }
+
+    public void playMovie() {
+        if (mMediaPlayer != null && mMediaPlayer.isPlaying())
+            return;
+        holder = mSurface.getHolder();
+        createPlayer(mFilePath);
+    }
+
+    private void toggleFullscreen(boolean fullscreen) {
+        WindowManager.LayoutParams attrs = getWindow().getAttributes();
+        if (fullscreen) {
+            attrs.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
+            layout.setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN);
+        } else {
+            attrs.flags &= ~WindowManager.LayoutParams.FLAG_FULLSCREEN;
+        }
+        getWindow().setAttributes(attrs);
     }
 
     @Override
@@ -185,15 +311,13 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
 
     @Override
     protected void onResume() {
-        mMediaPlayer.play();
-        vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause_over_video));
+        resumePlay();
         super.onResume();
     }
 
     @Override
     protected void onPause() {
-        mMediaPlayer.pause();
-        vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
+        pausePlay();
         super.onPause();
     }
 
@@ -244,30 +368,26 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
         // compute the display aspect ratio
         double displayAspectRatio = displayWidth / displayHeight;
 
-        counter ++;
-
+        counter++;
         switch (mCurrentSize) {
             case SURFACE_BEST_FIT:
-                if(counter > 2)
-                    Toast.makeText(this, "Best Fit", Toast.LENGTH_SHORT).show();
+                if (counter > 2) {
+
+                }
                 if (displayAspectRatio < aspectRatio)
                     displayHeight = displayWidth / aspectRatio;
                 else
                     displayWidth = displayHeight * aspectRatio;
                 break;
             case SURFACE_FIT_HORIZONTAL:
-                Toast.makeText(this, "Fit Horizontal", Toast.LENGTH_SHORT).show();
                 displayHeight = displayWidth / aspectRatio;
                 break;
             case SURFACE_FIT_VERTICAL:
-                Toast.makeText(this, "Fit Horizontal", Toast.LENGTH_SHORT).show();
                 displayWidth = displayHeight * aspectRatio;
                 break;
             case SURFACE_FILL:
-                Toast.makeText(this, "Fill", Toast.LENGTH_SHORT).show();
                 break;
             case SURFACE_16_9:
-                Toast.makeText(this, "16:9", Toast.LENGTH_SHORT).show();
                 aspectRatio = 16.0 / 9.0;
                 if (displayAspectRatio < aspectRatio)
                     displayHeight = displayWidth / aspectRatio;
@@ -275,7 +395,6 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
                     displayWidth = displayHeight * aspectRatio;
                 break;
             case SURFACE_4_3:
-                Toast.makeText(this, "4:3", Toast.LENGTH_SHORT).show();
                 aspectRatio = 4.0 / 3.0;
                 if (displayAspectRatio < aspectRatio)
                     displayHeight = displayWidth / aspectRatio;
@@ -283,7 +402,6 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
                     displayWidth = displayHeight * aspectRatio;
                 break;
             case SURFACE_ORIGINAL:
-                Toast.makeText(this, "Original", Toast.LENGTH_SHORT).show();
                 displayHeight = mVideoVisibleHeight;
                 displayWidth = visibleWidth;
                 break;
@@ -313,7 +431,6 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
 
     private void createPlayer(String media) {
         releasePlayer();
-        setupControls();
         try {
             final SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this.getApplicationContext());
             // Create LibVLC
@@ -354,7 +471,7 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
             mMediaPlayer = new MediaPlayer(libvlc);
             holder.setFormat(PixelFormat.RGBX_8888);
             holder.setKeepScreenOn(true);
-            mMediaPlayer.setEventListener(mPlayerListener);
+            mMediaPlayer.setEventListener(eventListener);
 
             // Set up video output
             final IVLCVout vout = mMediaPlayer.getVLCVout();
@@ -369,7 +486,6 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
             mMediaPlayer.setMedia(m);
             mMediaPlayer.play();
         } catch (Exception e) {
-            Toast.makeText(this, "Error creating player!", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -400,6 +516,29 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
         return ret;
     }
 
+    private void resumePlay() {
+        final IVLCVout vout = mMediaPlayer.getVLCVout();
+        if (!vout.areViewsAttached()) {
+            vout.setVideoView(mSurface);
+            vout.addCallback(this);
+            vout.attachViews();
+        }
+        mMediaPlayer.setEventListener(eventListener);
+        vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
+        mMediaPlayer.play();
+    }
+    private void pausePlay() {
+        if (mMediaPlayer.isPlaying()) {
+            mMediaPlayer.pause();
+            vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause_over_video));
+        }
+        final IVLCVout vout = mMediaPlayer.getVLCVout();
+        vout.detachViews();
+        vout.removeCallback(this);
+        mMediaPlayer.setEventListener(null);
+    }
+
+
     // TODO: handle this cleaner
     private void releasePlayer() {
         if (libvlc == null)
@@ -416,11 +555,6 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
         mVideoHeight = 0;
     }
 
-    /*************
-     * Events
-     *************/
-
-    private MediaPlayer.EventListener mPlayerListener = new MyPlayerListener(this);
 
     @Override
     public void onNewLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
@@ -430,10 +564,13 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
         // store video size
         mVideoWidth = width;
         mVideoHeight = height;
-        mVideoVisibleWidth  = visibleWidth;
+        mVideoVisibleWidth = visibleWidth;
         mVideoVisibleHeight = visibleHeight;
         mSarNum = sarNum;
         mSarDen = sarDen;
+        totalTime = mMediaPlayer.getLength();
+        sbTime.setMax((int) totalTime);
+        tvTotalTime.setText(SystemUtil.getMediaTime((int) totalTime));
         changeSurfaceLayout();
     }
 
@@ -447,34 +584,9 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
 
     }
 
-    private static class MyPlayerListener implements MediaPlayer.EventListener {
-        private WeakReference<PlayerActivity> mOwner;
-
-        public MyPlayerListener(PlayerActivity owner) {
-            mOwner = new WeakReference<PlayerActivity>(owner);
-        }
-
-        @Override
-        public void onEvent(MediaPlayer.Event event) {
-            PlayerActivity player = mOwner.get();
-
-            switch(event.type) {
-                case MediaPlayer.Event.EndReached:
-                    player.releasePlayer();
-                    break;
-                case MediaPlayer.Event.Playing:
-                case MediaPlayer.Event.Paused:
-                case MediaPlayer.Event.Stopped:
-                default:
-                    break;
-            }
-        }
-    }
-
     @Override
     public void onHardwareAccelerationError(IVLCVout vout) {
         // Handle errors with hardware acceleration
         this.releasePlayer();
-        Toast.makeText(this, "Error with hardware acceleration", Toast.LENGTH_LONG).show();
     }
 }

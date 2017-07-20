@@ -36,11 +36,11 @@ public class VLCPlayer extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void play(String path) {
+    public void play(String path,boolean isConsole) {
         Intent intent = new Intent(this.context, PlayerActivity.class);
         intent.putExtra(PlayerActivity.LOCATION, path);
+	intent.putExtra(PlayerActivity.CONSOLE, isConsole);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         this.context.startActivity(intent);
     }
-
 }
