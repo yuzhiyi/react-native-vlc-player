@@ -2,6 +2,7 @@ package com.ghondar.vlcplayer;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -74,6 +75,7 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     private int mSarNum;
     private int mSarDen;
     private MediaPlayer.EventListener eventListener;
+    private ProgressDialog dialog;
 
     private int voice;
 
@@ -96,18 +98,19 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     private int muteImage = R.drawable.mute;
     private final long timeToDisappear = 3000;
     private boolean isConsole;
+    private MyVolumeReceiver mVolumeReceiver;
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.player);
-	Intent intent = getIntent();
-        mFilePath = intent.getExtras().getString(LOCATION);
-        isConsole = intent.getExtras().getBoolean(CONSOLE,false);
-        initView();
-        initListener();
-        playMovie();
-    }
+     @Override     
+     public void onCreate(Bundle savedInstanceState) {         
+	super.onCreate(savedInstanceState);         
+	setContentView(R.layout.player); 	
+	Intent intent = getIntent();         
+	mFilePath = intent.getExtras().getString(LOCATION);         
+	isConsole = intent.getExtras().getBoolean(CONSOLE,false);         
+	initView();         
+	initListener();         
+	playMovie();     
+     }
 
     private void initView() {
         layout = (LinearLayout) findViewById(R.id.vlc_container);
@@ -128,9 +131,16 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
         } else {
             ivVoiceStatue.setImageDrawable(getResources().getDrawable(voiceImage));
         }
-	if(isConsole == false) {
+        if(isConsole == false) {
             rlConsole.setVisibility(View.GONE);
         }
+        dialog = new ProgressDialog(this);
+        dialog.setTitle("视频缓存");
+        dialog.setMessage("正在努力加载中 ...");
+        dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        dialog.setCancelable(true);
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.show();
     }
 
     private void initListener() {
@@ -197,11 +207,11 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
                         tvTotalTime.setText(SystemUtil.getMediaTime((int) totalTime));
                         mMediaPlayer.stop();
                         vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause_over_video));
-			vlcOverlay.setVisibility(View.VISIBLE);
+                        vlcOverlay.setVisibility(View.VISIBLE);
                     }
                     if (mMediaPlayer.getPlayerState() == Media.State.Playing) {
                         vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
-
+                        dialog.dismiss();
                     }
                 } catch (Exception e) {
 
@@ -256,7 +266,7 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     }
 
     private void registerReceiver() {
-        MyVolumeReceiver mVolumeReceiver = new MyVolumeReceiver();
+        mVolumeReceiver = new MyVolumeReceiver();
         IntentFilter filter = new IntentFilter();
         filter.addAction("android.media.VOLUME_CHANGED_ACTION");
         registerReceiver(mVolumeReceiver, filter);
@@ -517,6 +527,9 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     }
 
     private void resumePlay() {
+        if(mMediaPlayer == null) {
+            return;
+        }
         final IVLCVout vout = mMediaPlayer.getVLCVout();
         if (!vout.areViewsAttached()) {
             vout.setVideoView(mSurface);
@@ -553,6 +566,9 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
 
         mVideoWidth = 0;
         mVideoHeight = 0;
+        if(mVolumeReceiver != null) {
+            unregisterReceiver(mVolumeReceiver);
+        }
     }
 
 
