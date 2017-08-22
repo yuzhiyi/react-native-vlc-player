@@ -100,16 +100,16 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
     private boolean isConsole;
     private MyVolumeReceiver mVolumeReceiver;
 
-     @Override     
-     public void onCreate(Bundle savedInstanceState) {         
-	super.onCreate(savedInstanceState);         
-	setContentView(R.layout.player); 	
-	Intent intent = getIntent();         
-	mFilePath = intent.getExtras().getString(LOCATION);         
-	isConsole = intent.getExtras().getBoolean(CONSOLE,false);         
-	initView();         
-	initListener();         
-	playMovie();     
+     @Override
+     public void onCreate(Bundle savedInstanceState) {
+	super.onCreate(savedInstanceState);
+	setContentView(R.layout.player);
+	Intent intent = getIntent();
+	mFilePath = intent.getExtras().getString(LOCATION);
+	isConsole = intent.getExtras().getBoolean(CONSOLE,false);
+	initView();
+	initListener();
+	playMovie();
      }
 
     private void initView() {
@@ -196,6 +196,10 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
             @Override
             public void onEvent(MediaPlayer.Event event) {
                 try {
+                    if (mMediaPlayer.getPlayerState() == Media.State.Playing) {
+                        vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
+                        dialog.dismiss();
+                    }
                     if (event.getTimeChanged() == 0 || totalTime == 0) {
                         return;
                     }
@@ -208,10 +212,6 @@ public class PlayerActivity extends Activity implements IVLCVout.Callback {
                         mMediaPlayer.stop();
                         vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause_over_video));
                         vlcOverlay.setVisibility(View.VISIBLE);
-                    }
-                    if (mMediaPlayer.getPlayerState() == Media.State.Playing) {
-                        vlcButtonPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play_over_video));
-                        dialog.dismiss();
                     }
                 } catch (Exception e) {
 
